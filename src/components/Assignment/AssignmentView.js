@@ -15,6 +15,7 @@ import truncateText from "../utils/truncateText";
 function AssignmentView() {
   const { id } = useParams();
   const [assignment, setAssignment] = useState(null);
+  const [rubric, setRubric] = useState(null);
   const [submissions, setSubmissions] = useState([]);
   const [showRubricEditModal, setShowRubricEditModal] = useState(false);
   const [showTextSubmissionModal, setShowTextSubmissionModal] = useState(false);
@@ -23,6 +24,7 @@ function AssignmentView() {
 
   useEffect(() => {
   fetchAssignment();
+  fetchRubric();
   fetchSubmissions();
 }, [id]);
 
@@ -33,19 +35,36 @@ function AssignmentView() {
     try {
       const response = await axios.get(`${API_BASE_URL}/assignments/${id}/`);
       setAssignment(response.data);
-      setIsRubricApproved(response.data.rubric?.human_approved || false);
+      console.log(assignment);
     } catch (error) {
       console.error('Error fetching assignment:', error);
       toast.error('Error fetching assignment');
     }
   }
 
+  const fetchRubric = async () => {
+    try {
+      const rubricResponse = await axios.get(`${API_BASE_URL}/rubrics?assignment=${id}`);
+      setRubric(rubricResponse.data.results[0]);
+      console.log(rubricResponse.data.results[0]);
+      console.log(rubric);
+      setIsRubricApproved(rubric?.human_approved)
+    } catch(error){
+      console.error('Error fetching rubric:', error);
+      toast.error('Error fetching rubric');
+    }
 
-const handleApproveRubric = async () => {
+  }
+
+const handleApproveRubric =  (id) => {
   try {
-    await axios.post(`${API_BASE_URL}/assignments/${id}/approve_rubric/`);
-    setIsRubricApproved(true);
-    toast.success('Rubric approved successfully');
+    axios.options(`${API_BASE_URL}/assignments/${id}/approve_rubric/`);
+    if (!isRubricApproved){
+      setIsRubricApproved(true);
+      toast.success('Rubric approved successfully');
+    }
+
+
   } catch (error) {
     console.error('Error approving rubric:', error);
     toast.error('Error approving rubric');
@@ -74,8 +93,9 @@ const fetchSubmissions = async () => {
 
   const handleRubricUpdate = async (updatedRubric) => {
     try {
-      await axios.patch(`${API_BASE_URL}/assignments/${id}/`, { rubric: updatedRubric, is_rubric_approved: true });
-      setAssignment({ ...assignment, rubric: updatedRubric });
+      await axios.patch(`${API_BASE_URL}/rubrics/${updatedRubric.id}/`);
+      setAssignment({ ...assignment });
+      setRubric(updatedRubric);
       setIsRubricApproved(true);
       setShowRubricEditModal(false);
       toast.success('Rubric updated successfully');
@@ -121,11 +141,13 @@ const fetchSubmissions = async () => {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
+
   const handleTextSubmission = async () => {
   try {
     await axios.post(`${API_BASE_URL}/submissions/submit_text/`, {
-      text: textSubmission,
-      assignment: id  // Ensure this is the current assignment ID
+      content: textSubmission,
+      assignment: id,
+      student_name: "Anonymous"
     });
     setShowTextSubmissionModal(false);
     setTextSubmission('');
@@ -172,7 +194,7 @@ const fetchSubmissions = async () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={handleApproveRubric}
+              onClick={handleApproveRubric(assignment.id)}
               className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition duration-300 ease-in-out"
             >
               Approve Rubric
@@ -225,7 +247,7 @@ const fetchSubmissions = async () => {
         <RubricApprovalWrapper>
         <div className="bg-white shadow rounded-lg p-4">
           <RubricDisplay
-          rubric={assignment.rubric}
+          rubric={rubric?.content}
           onEditRubric={() => setShowRubricEditModal(true)}
           isApproved={isRubricApproved}
           />
@@ -240,7 +262,7 @@ const fetchSubmissions = async () => {
           <SubmissionTable
             submissions={submissions}
             assignment={assignment}
-            rubric={assignment.rubric}
+            rubric={rubric?.content}
             onDeleteSubmission={handleDeleteSubmission}
             onRefresh={fetchSubmissions}
           />
@@ -248,7 +270,7 @@ const fetchSubmissions = async () => {
 
         {showRubricEditModal && (
             <RubricEditModal
-                rubric={assignment.rubric}
+                rubric={rubric}
                 onSave={handleRubricUpdate}
                 onClose={() => setShowRubricEditModal(false)}
             />

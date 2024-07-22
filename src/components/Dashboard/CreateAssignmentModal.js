@@ -1,58 +1,28 @@
+// CreateAssignmentModal.js
 import React, { useState } from 'react';
-import axios from 'axios';
-import { API_BASE_URL } from '../utils/api';
+import { motion } from 'framer-motion';
 import Button from '../Common/Button';
-import DynamicLoadingScreen from '../Loading/DynamicLoadingScreen';
-import RubricApprovalModal from '../Rubric/RubricApprovalModal';
 
-function CreateAssignmentModal({ onClose, onCreate }) {
+function CreateAssignmentModal({ onClose, onCreateStart }) {
   const [formData, setFormData] = useState({ title: '', description: '' });
-  const [isLoading, setIsLoading] = useState(false);
-  const [processId, setProcessId] = useState(null);
-  const [createdAssignment, setCreatedAssignment] = useState(null);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setIsLoading(true);
-    onClose(); // Close the modal immediately
-
-    try {
-      const response = await axios.post(`${API_BASE_URL}/assignments/`, formData);
-      setProcessId(response.data.process_id);
-      setCreatedAssignment(response.data);
-    } catch (error) {
-      console.error('Error creating assignment:', error);
-      setIsLoading(false);
-    }
+    onCreateStart(formData);
+    onClose();
   };
-
-  const handleRubricApproval = (approvedRubric) => {
-    // Here you would typically send the approved rubric back to the server
-    // and then call onCreate with the final assignment data
-    onCreate({ ...createdAssignment, rubric: approvedRubric });
-    setIsLoading(false);
-  };
-
-  if (isLoading && !createdAssignment) {
-    return <DynamicLoadingScreen processId={processId} />;
-  }
-
-  if (createdAssignment) {
-    return (
-      <RubricApprovalModal
-        assignment={createdAssignment}
-        onApprove={handleRubricApproval}
-        onReject={() => setIsLoading(false)} // Handle rejection (e.g., go back to form)
-      />
-    );
-  }
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center"
+    >
       <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
         <h2 className="text-2xl font-bold mb-4">Create New Assignment</h2>
         <form onSubmit={handleSubmit}>
@@ -90,7 +60,7 @@ function CreateAssignmentModal({ onClose, onCreate }) {
           </div>
         </form>
       </div>
-    </div>
+    </motion.div>
   );
 }
 

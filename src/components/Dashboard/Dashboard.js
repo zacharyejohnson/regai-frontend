@@ -7,10 +7,14 @@ import CreateAssignmentButton from './CreateAssignmentButton';
 import Pagination from './Pagination';
 import LoadingSpinner from '../LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
+import AssignmentGenerationCard from './AssignmentGenerationCard';
+import {BookOpenIcon} from "@heroicons/react/outline";
+import {Link} from "react-router-dom";
 
 function Dashboard() {
   const [assignments, setAssignments] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [generatingAssignments, setGeneratingAssignments] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,15 +40,18 @@ function Dashboard() {
   };
 
   const handleCreateAssignment = async (newAssignment) => {
+    const tempId = Date.now(); // Temporary ID for the generating assignment
+    setGeneratingAssignments([...generatingAssignments, { ...newAssignment, id: tempId, status: 'generating' }]);
+
     try {
       const response = await axios.post(`${API_BASE_URL}/assignments/`, newAssignment);
-      setAssignments([response.data, ...assignments]);
-      setShowCreateModal(false);
+      setGeneratingAssignments(prev => prev.map(a => a.id === tempId ? response.data : a));
     } catch (error) {
       console.error('Error creating assignment:', error.response ? error.response.data : error.message);
       alert('Failed to create assignment. Please try again.');
+      setGeneratingAssignments(prev => prev.filter(a => a.id !== tempId));
     }
-};
+  };
 
   const handleDeleteAssignment = async (id) => {
     if (window.confirm('Are you sure you want to delete this assignment?')) {
@@ -58,6 +65,11 @@ function Dashboard() {
     }
   };
 
+  const handleAssignmentGenerated = (generatedAssignment) => {
+    setGeneratingAssignments(prev => prev.filter(a => a.id !== generatedAssignment.id));
+    setAssignments(prev => [generatedAssignment, ...prev]);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -68,14 +80,19 @@ function Dashboard() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Assignments</h1>
         <CreateAssignmentButton onClick={() => setShowCreateModal(true)} />
+        <Link
+            to="/knowledge-base"
+            className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center"
+          >
+            <BookOpenIcon className="w-5 h-5 mr-2" />
+            Knowledge Base
+          </Link>
       </div>
 
       {isLoading ? (
         <LoadingSpinner />
       ) : error ? (
         <div className="text-red-600 text-center">{error}</div>
-      ) : assignments.length === 0 ? (
-        <div className="text-gray-600 text-center">No assignments found.</div>
       ) : (
         <AnimatePresence>
           <motion.div
@@ -86,6 +103,13 @@ function Dashboard() {
               visible: { transition: { staggerChildren: 0.07 } }
             }}
           >
+            {generatingAssignments.map(assignment => (
+              <AssignmentGenerationCard
+                key={assignment.id}
+                assignment={assignment}
+                onComplete={handleAssignmentGenerated}
+              />
+            ))}
             {assignments.map(assignment => (
               <motion.div
                 key={assignment.id}
@@ -114,7 +138,7 @@ function Dashboard() {
         {showCreateModal && (
           <CreateAssignmentModal
             onClose={() => setShowCreateModal(false)}
-            onCreate={handleCreateAssignment}
+            onCreateStart={handleCreateAssignment}
           />
         )}
       </AnimatePresence>

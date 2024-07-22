@@ -2,7 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { XIcon, PlusIcon, TrashIcon } from '@heroicons/react/solid';
 
 function RubricEditModal({ rubric, onSave, onClose }) {
-  const [editedRubric, setEditedRubric] = useState(rubric);
+  console.log("Rubric received in RubricEditModal:", rubric);
+
+  const rubricData = rubric.content || rubric || {};
+
+  const [editedRubric, setEditedRubric] = useState(rubricData);
   const [editingCell, setEditingCell] = useState(null);
   const modalRef = useRef(null);
 
@@ -12,6 +16,16 @@ function RubricEditModal({ rubric, onSave, onClose }) {
       modalRef.current.style.maxHeight = `${height}px`;
     }
   }, []);
+
+  const handleClickOutside = (e) => {
+    if (modalRef.current && !modalRef.current.contains(e.target)) {
+      onClose();
+    }
+  };
+
+  const handleSave = () => {
+    onSave({ ...rubric, rubric: editedRubric });
+  };
 
   const handleCategoryChange = (index, field, value) => {
     const newCategories = [...editedRubric.categories];
@@ -34,10 +48,10 @@ function RubricEditModal({ rubric, onSave, onClose }) {
       {
         name: 'New Category',
         weight: 0,
-        scoring_levels: editedRubric.categories[0].scoring_levels.map((_, index) => ({
+        scoring_levels: editedRubric.categories[0]?.scoring_levels?.map((_, index) => ({
           level: index + 1,
           description: ''
-        })),
+        })) || [],
       },
     ];
     setEditedRubric({ ...editedRubric, categories: newCategories });
@@ -47,8 +61,8 @@ function RubricEditModal({ rubric, onSave, onClose }) {
     const newCategories = editedRubric.categories.map(category => ({
       ...category,
       scoring_levels: [
-        ...category.scoring_levels,
-        { level: category.scoring_levels.length + 1, description: '' }
+        ...(category.scoring_levels || []),
+        { level: (category.scoring_levels?.length || 0) + 1, description: '' }
       ],
     }));
     setEditedRubric({ ...editedRubric, categories: newCategories });
@@ -93,6 +107,23 @@ function RubricEditModal({ rubric, onSave, onClose }) {
       </div>
     </div>
   );
+
+  console.log("Edited Rubric:", editedRubric);
+
+  if (!rubricData || !rubricData.categories || rubricData.categories.length === 0) {
+    return (
+      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center">
+        <div className="bg-white p-8 rounded-lg shadow-xl">
+          <h2 className="text-2xl font-bold mb-4">Error: Invalid Rubric</h2>
+          <p>The rubric data is invalid or empty. Please check the data and try again.</p>
+          <button onClick={onClose} className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center" onClick={onClose}>
@@ -176,7 +207,7 @@ function RubricEditModal({ rubric, onSave, onClose }) {
             Add Category
           </button>
           <button
-            onClick={() => onSave(editedRubric)}
+            onClick={() => handleSave()}
             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
           >
             Save Rubric

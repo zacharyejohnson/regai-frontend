@@ -152,6 +152,29 @@ function SubmissionTable({ submissions, assignment, rubric, onDeleteSubmission, 
     setGradingSubmission(null);
   };
 
+  const { max_score, categoryWeights } = useMemo(() => {
+    if (!rubric || !rubric.categories) return { max_score: 0, categoryWeights: {} };
+
+    const totalWeight = rubric.categories.reduce((sum, category) => sum + (category.weight || 0), 0);
+
+    return rubric.categories.reduce((acc, category, index) => {
+      const categoryMax = category.scoring_levels.length > 0
+        ? Math.max(...category.scoring_levels.map(level => level.score))
+        : 0;
+      const relativeWeight = (category.weight || 0) / totalWeight;
+
+      return {
+        max_score: acc.max_score + (categoryMax * relativeWeight),
+        categoryWeights: {
+          ...acc.categoryWeights,
+          [index]: relativeWeight
+        }
+      };
+    }, { max_score: 0, categoryWeights: {} });
+  }, [rubric]);
+
+
+
   return (
       <div>
         {Array.isArray(submissions) ? (
@@ -214,7 +237,12 @@ function SubmissionTable({ submissions, assignment, rubric, onDeleteSubmission, 
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {submission.status === 'graded' ? (
-                                <CircularProgressBar percentage={Math.round(submission.overall_score * 100)}/>
+                                <div className="flex items-center space-x-2">
+                                  <CircularProgressBar percentage={Math.round(submission.overall_score * 100)}/>
+                                  <span>
+                                    {(submission.overall_score * max_score).toFixed(2)} / {max_score.toFixed(2)}{' '}
+                            </span>
+                                </div>
                             ) : (
                                 'N/A'
                             )}

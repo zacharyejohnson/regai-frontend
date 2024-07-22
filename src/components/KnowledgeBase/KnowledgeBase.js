@@ -46,7 +46,8 @@ function KnowledgeBase() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_BASE_URL}/assignments/${assignmentId}/knowledge_base_items/`);
+      const response = await axios.get(`${API_BASE_URL}/knowledge_base/${assignmentId}/`);
+      console.log("Knowledge base items: ", response)
       setKnowledgeItems(response.data);
     } catch (error) {
       console.error('Error fetching knowledge base items:', error);
